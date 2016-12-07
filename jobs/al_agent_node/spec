@@ -1,0 +1,28 @@
+---
+name: al_agent_node
+
+description: Install, Provision and run AlertLogic Agent
+
+templates:
+  ctl.sh: bin/ctl
+  pre-start.erb: bin/pre-start
+
+packages:
+- al_agent
+
+properties:
+  al_agent.registration_key:
+    description: "AlertLogic Registration Key"
+    default: nil
+  al_agent.for_imaging:
+    description: "Boolean for imaging only, skip provision"
+    default: false
+  al_agent.egress_host:
+    description: "Egress host minus scheme and port. Optional."
+    default: nil
+  al_agent.egress_port:
+    description: "Egress port. Optional."
+    default: nil
+  al_agent.proxy_url:
+    description: "Proxy url for outbound connections. Optional."
+    default: nil

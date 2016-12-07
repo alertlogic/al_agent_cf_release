@@ -1,0 +1,7 @@
+check process al-agent
+  with pidfile /var/vcap/packages/al_agent/var/alertlogic/lib/agent/run/al-agent.pid
+  start program "/var/vcap/jobs/al_agent_node/bin/ctl start"
+  stop program "/var/vcap/jobs/al_agent_node/bin/ctl stop"
+  group vcap
+
+
