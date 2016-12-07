@@ -1,0 +1,11 @@
+# abort script on any command that exits with a non zero value
+set -e
+set -x
+apt-get install rpm2cpio -qq
+wget https://scc.alertlogic.net/software/al-agent-LATEST-1.x86_64.rpm -O al-agent-LATEST-1.x86_64.rpm
+rpm2cpio al-agent-LATEST-1.x86_64.rpm | cpio -idmv
+cp -r usr etc var ${BOSH_INSTALL_TARGET}
+sed -i \
+-e 's~^DAEMON_ARGS=.*~DAEMON_ARGS="-d --root-dir /var/vcap/packages/al_agent/var/alertlogic/lib/agent"~' \
+-e 's~^AL_ROOT=.*~AL_ROOT=/var/vcap/packages/al_agent/var/alertlogic~' \
+${BOSH_INSTALL_TARGET}/etc/init.d/al-agent

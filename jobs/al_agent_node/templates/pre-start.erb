@@ -1,0 +1,65 @@
+#!/bin/bash
+REG_KEY="<%= p('al_agent.registration_key') %>"
+FOR_IMAGING="<%= p('al_agent.for_imaging') %>"
+EGRESS_HOST="<%= p('al_agent.egress_host') %>"
+EGRESS_PORT="<%= p('al_agent.egress_port') %>"
+PROXY_URL="<%= p('al_agent.proxy_url') %>"
+
+SYSTEMCTL_BIN=$(which systemctl)
+if [ -z "$SYSTEMCTL_BIN" ];then
+    IS_SYSTEMD=1
+else
+    IS_SYSTEMD=
+fi
+
+if [ -e /var/alertlogic/etc/host_key.pem  ];then
+    IS_PROVISIONED=1
+else
+    IS_PROVISIONED=
+fi
+
+configure_options=
+if [ -z "${PROXY_URL}" ];then
+    configure_options="${configure_options} --proxy {PROXY_URL}"
+fi
+if [ -z "${EGRESS_HOST}" ] && [ -z "${EGRESS_PORT}" ];then
+    configure_options="${configure_options} --host ${EGRESS_HOST} --port ${EGRESS_PORT}"
+fi
+
+if [ -z "${configure_options}" ];then
+    /var/vcap/packages/al_agent/etc/init.d/al-agent configure ${configure_options} --root-dir /var/vcap/packages/al_agent/var/alertlogic/lib/agent 2>&1
+fi
+
+if [ -n "$IS_PROVISIONED" ];then
+    echo "Host is already provisioned with Alert Logic Agent. Exiting."
+else
+    if [ "${FOR_IMAGING}" == 'false' ] && [ -n "${REG_KEY}" ];then
+        provision_options=""
+        provision_options="${provision_options} --key ${REG_KEY}"
+        provision_options="${provision_options} --inst-type host"
+        /var/vcap/packages/al_agent/etc/init.d/al-agent provision ${provision_options} --root-dir /var/vcap/packages/al_agent/var/alertlogic/lib/agent 2>&1
+        ln -s /var/alertlogic/etc /var/vcap/packages/al_agent/var/alertlogic/etc
+    fi
+fi
+
+if [ -e /etc/rsyslog.conf ];then
+    if [ ! -e /etc/rsyslog.d/alertlogic.conf ];then
+        echo '*.* @@127.0.0.1:1514;RSYSLOG_FileFormat' > /etc/rsyslog.d/alertlogic.conf
+        /etc/init.d/rsyslog restart
+    fi
+elif [ -e /etc/syslog-ng/syslog-ng.conf ];then
+    file=/etc/syslog-ng/conf.d/alertlogic.conf
+    if [ ! -e $file ];then
+        touch $file
+        echo 'destination d_alertlogic {' > $file
+        echo '    tcp("localhost" port(1514));' > $file
+        echo '};' > $file
+        echo 'log {' > $file
+        echo '    source({{ syslog_ng_source }});' > $file
+        echo '    destination(d_alertlogic);' > $file
+        echo '};' > $file
+        /etc/init.d/syslog-ng restart
+    fi
+fi
+
+exit 0
